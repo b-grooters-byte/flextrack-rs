@@ -1,2 +1,2 @@
 # flextrack-rs
-Direct2D Rust flextrack demo application
+Direct2D Rust flextrack demo application.
