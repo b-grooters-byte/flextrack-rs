@@ -1,7 +1,7 @@
 # flextrack-rs
 Direct2D Rust model railroad flextrack demo application.
 
-The flex track application is an extenstion of the basic bezier example. The same bezier curve is used with some additional capabilities. Recall the basic bezier formula:
+The flex track application is an extenstion of the basic Bézier example. The same Bézier curve is used with some additional capabilities. Recall the basic Bézier formula:
 
 $$
 \begin{equation}
