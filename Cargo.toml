@@ -1,12 +1,12 @@
 [package]
 name = "flextrack-rs"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies.windows]
-version = "0.52"
+version = "0.56"
 features = [
     "Foundation",
     "Foundation_Numerics",

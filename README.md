@@ -9,4 +9,4 @@ P(t) = \sum_{i=0}^n B_i^n(t) * P_i,t \in [0,1]
 \end{equation}
 $$
 
-Model railroad flex track has effectively parallel bezier curves. These are created in the demo application by computing tangents and normals to each line segment in the primary curve and constructing offset line segments.
+Model railroad flex track can be rendered with parallel bezier curves. These are created in the demo application by computing tangents and normals to each line segment in the primary curve and constructing offset line segments. The offset line segments make up the "rails" of the flex track. The ties are rendered as rectangles at specific offsets along the primary curve.

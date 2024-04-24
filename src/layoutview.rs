@@ -6,7 +6,7 @@ use windows::{
         Foundation::{COLORREF, HINSTANCE, HWND, LPARAM, LRESULT, WPARAM},
         Graphics::{
             Direct2D::{
-                ID2D1Factory1, ID2D1HwndRenderTarget, ID2D1SolidColorBrush, ID2D1StrokeStyle,
+                ID2D1Factory1, ID2D1HwndRenderTarget, ID2D1SolidColorBrush, ID2D1StrokeStyle1,
             },
             DirectWrite::{
                 DWriteCreateFactory, IDWriteFactory, IDWriteTextFormat, DWRITE_FACTORY_TYPE_SHARED,
@@ -34,7 +34,7 @@ pub(crate) struct LayoutView<'a> {
     factory: &'a ID2D1Factory1,
     target: Option<ID2D1HwndRenderTarget>,
     text_format: IDWriteTextFormat,
-    line_style: ID2D1StrokeStyle,
+    line_style: ID2D1StrokeStyle1,
     default_brush: Option<ID2D1SolidColorBrush>,
     dpix: f32,
     dpiy: f32,

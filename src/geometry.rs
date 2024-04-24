@@ -51,6 +51,15 @@ impl Rect {
     }
 }
 
+pub struct Line {
+    pub start: Point,
+    pub end: Point,
+}
+
+pub struct Polygon {
+    pub points: Vec<Point>,
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -59,5 +68,36 @@ mod test {
     fn test_contains() {
         let r = Rect::new(10.0, 10.0, 10.0, 10.0);
         assert!(r.contains(Point { x: 15.0, y: 15.0 }));
+        assert!(!r.contains(Point { x: 5.0, y: 5.0 }));
+    }
+
+    #[test]
+    fn test_slope() {
+        let p1 = Point { x: 0.0, y: 0.0 };
+        let p2 = Point { x: 1.0, y: 1.0 };
+        assert_eq!(p1.slope(&p2), 1.0);
+
+        let p1 = Point { x: 0.0, y: 0.0 };
+        let p2 = Point { x: 1.0, y: 0.0 };
+        assert_eq!(p1.slope(&p2), 0.0);
+
+        let p1 = Point { x: 0.0, y: 0.0 };
+        let p2 = Point { x: 0.0, y: 1.0 };
+        assert!(p1.slope(&p2).is_nan());
+
+        let p1 = Point { x: 0.0, y: 0.0 };
+        let p2 = Point { x: 1.0, y: 2.0 };
+        assert_eq!(p1.slope(&p2), 2.0);
+    }
+
+    #[test]
+    fn test_distance() {
+        let p1 = Point { x: 0.0, y: 0.0 };
+        let p2 = Point { x: 3.0, y: 4.0 };
+        assert_eq!(p1.distance(&p2), 5.0);
+
+        let p1 = Point { x: 0.0, y: 0.0 };
+        let p2 = Point { x: -10.0, y: -10.0 };
+        assert_eq!(p1.distance(&p2).floor(), 14.0);
     }
 }
