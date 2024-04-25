@@ -1,5 +1,6 @@
 use std::sync::Once;
 
+use layoutview::LayoutView;
 use windows::{
     core::{w, Result, HSTRING},
     Win32::{
@@ -104,6 +105,16 @@ impl<'a> AppWindow<'a> {
         lparam: LPARAM,
     ) -> LRESULT {
         match message {
+            WM_CREATE => match LayoutView::new(window, self.factory) {
+                Ok(view) => {
+                    self.layout_view = Some(view);
+                    LRESULT(0)
+                }
+                Err(e) => {
+                    eprintln!("Failed to create layout view: {:?}", e);
+                    LRESULT(-1)
+                }
+            },
             _ => unsafe { DefWindowProcW(window, message, wparam, lparam) },
         }
     }

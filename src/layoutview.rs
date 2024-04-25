@@ -16,10 +16,10 @@ use windows::{
         },
         System::LibraryLoader::GetModuleHandleW,
         UI::WindowsAndMessaging::{
-            CreateWindowExW, DefWindowProcW, GetWindowLongPtrA, LoadCursorW, RegisterClassW,
-            SetWindowLongPtrA, CREATESTRUCTA, CS_HREDRAW, CS_VREDRAW, CW_USEDEFAULT, GWLP_USERDATA,
-            HMENU, IDC_ARROW, WINDOW_EX_STYLE, WM_CREATE, WNDCLASSW, WS_CHILDWINDOW,
-            WS_CLIPSIBLINGS, WS_VISIBLE,
+            CreateWindowExW, DefWindowProcW, GetClientRect, GetWindowLongPtrA, LoadCursorW,
+            RegisterClassW, SetWindowLongPtrA, CREATESTRUCTA, CS_HREDRAW, CS_VREDRAW,
+            CW_USEDEFAULT, GWLP_USERDATA, HMENU, IDC_ARROW, WINDOW_EX_STYLE, WM_CREATE, WNDCLASSW,
+            WS_CHILDWINDOW, WS_CLIPSIBLINGS, WS_VISIBLE,
         },
     },
 };
@@ -65,7 +65,7 @@ impl<'a> LayoutView<'a> {
                 lpfnWndProc: Some(Self::wnd_proc),
                 hInstance: instance.into(),
                 hCursor: unsafe { LoadCursorW(HINSTANCE(0), IDC_ARROW).ok().unwrap() },
-                hbrBackground: unsafe { CreateSolidBrush(COLORREF(0)) },
+                hbrBackground: unsafe { CreateSolidBrush(COLORREF(0x7CD595)) },
                 lpszClassName: windows::core::w!("bytetrail.window.layoutview"),
                 ..Default::default()
             };
@@ -87,6 +87,10 @@ impl<'a> LayoutView<'a> {
             dpiy,
         });
 
+        // get the parent size
+        let mut rect = Default::default();
+        unsafe { GetClientRect(parent, &mut rect) };
+
         let _window = unsafe {
             CreateWindowExW(
                 WINDOW_EX_STYLE::default(),
@@ -95,8 +99,8 @@ impl<'a> LayoutView<'a> {
                 WS_VISIBLE | WS_CLIPSIBLINGS | WS_CHILDWINDOW,
                 CW_USEDEFAULT,
                 CW_USEDEFAULT,
-                DEFAULT_WIDTH as i32,
-                DEFAULT_HEIGHT as i32,
+                rect.right - rect.left,
+                rect.bottom - rect.top,
                 parent,
                 HMENU(0),
                 instance,
