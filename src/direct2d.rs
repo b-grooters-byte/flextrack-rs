@@ -46,19 +46,39 @@ pub fn create_style(factory: &ID2D1Factory1, dashes: Option<&[f32]>) -> Result<I
     unsafe { factory.CreateStrokeStyle(&props, dashes) }
 }
 
-pub fn create_brush(
+pub fn color_rgb(color: u32) -> D2D1_COLOR_F {
+    D2D1_COLOR_F {
+        r: ((color >> 16) & 0xff) as f32 / 255.0,
+        g: ((color >> 8) & 0xff) as f32 / 255.0,
+        b: (color & 0xff) as f32 / 255.0,
+        a: 1.0,
+    }
+}
+
+pub fn create_brush_rgb(
     target: &ID2D1HwndRenderTarget,
-    r: f32,
-    g: f32,
-    b: f32,
-    a: f32,
+    color: u32,
 ) -> Result<ID2D1SolidColorBrush> {
-    let color = D2D1_COLOR_F { r, g, b, a };
-    let properties = D2D1_BRUSH_PROPERTIES {
-        opacity: 0.8,
-        transform: Matrix3x2::identity(),
+    let color = D2D1_COLOR_F {
+        r: ((color >> 16) & 0xff) as f32 / 255.0,
+        g: ((color >> 8) & 0xff) as f32 / 255.0,
+        b: (color & 0xff) as f32 / 255.0,
+        a: 1.0,
     };
-    unsafe { target.CreateSolidColorBrush(&color, Some(&properties)) }
+    unsafe { target.CreateSolidColorBrush(&color, None) }
+}
+
+pub fn create_brush_argb(
+    target: &ID2D1HwndRenderTarget,
+    color: u32,
+) -> Result<ID2D1SolidColorBrush> {
+    let color = D2D1_COLOR_F {
+        r: ((color >> 16) & 0xff) as f32 / 255.0,
+        g: ((color >> 8) & 0xff) as f32 / 255.0,
+        b: (color & 0xff) as f32 / 255.0,
+        a: ((color >> 24) & 0xff) as f32 / 255.0,
+    };
+    unsafe { target.CreateSolidColorBrush(&color, None) }
 }
 
 pub fn load_bitmap(

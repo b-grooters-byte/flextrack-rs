@@ -15,9 +15,10 @@ use windows::{
         },
         UI::WindowsAndMessaging::{
             CreateWindowExW, DefWindowProcW, DispatchMessageW, GetMessageW, GetWindowLongPtrW,
-            LoadCursorW, RegisterClassW, SetWindowLongPtrW, ShowWindow, CREATESTRUCTW, CS_HREDRAW,
-            CS_VREDRAW, CW_USEDEFAULT, GWLP_USERDATA, HMENU, IDC_ARROW, MSG, SW_SHOW,
-            WINDOW_EX_STYLE, WM_CREATE, WNDCLASSW, WS_OVERLAPPEDWINDOW, WS_VISIBLE,
+            LoadCursorW, PostQuitMessage, RegisterClassW, SetWindowLongPtrW, ShowWindow,
+            CREATESTRUCTW, CS_HREDRAW, CS_VREDRAW, CW_USEDEFAULT, GWLP_USERDATA, HMENU, IDC_ARROW,
+            MSG, SW_SHOW, WINDOW_EX_STYLE, WM_CREATE, WM_DESTROY, WNDCLASSW, WS_OVERLAPPEDWINDOW,
+            WS_VISIBLE,
         },
     },
 };
@@ -93,7 +94,11 @@ impl<'a> AppWindow<'a> {
                 Some(app_window.as_mut() as *mut _ as _),
             )
         };
-        unsafe { ShowWindow(window, SW_SHOW) };
+        unsafe {
+            if !bool::from(ShowWindow(window, SW_SHOW)) {
+                return Err(windows::core::Error::from_win32());
+            }
+        };
         Ok(app_window)
     }
 
@@ -115,6 +120,10 @@ impl<'a> AppWindow<'a> {
                     LRESULT(-1)
                 }
             },
+            WM_DESTROY => {
+                unsafe { PostQuitMessage(0) };
+                LRESULT(0)
+            }
             _ => unsafe { DefWindowProcW(window, message, wparam, lparam) },
         }
     }

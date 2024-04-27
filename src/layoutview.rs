@@ -1,34 +1,35 @@
-use crate::direct2d::create_style;
+use crate::direct2d::{color_rgb, create_brush_rgb, create_style};
 use std::sync::Once;
 use windows::{
     core::{Result, HSTRING},
     Win32::{
-        Foundation::{COLORREF, HINSTANCE, HWND, LPARAM, LRESULT, WPARAM},
+        Foundation::{COLORREF, HINSTANCE, HWND, LPARAM, LRESULT, RECT, WPARAM},
         Graphics::{
             Direct2D::{
-                ID2D1Factory1, ID2D1HwndRenderTarget, ID2D1SolidColorBrush, ID2D1StrokeStyle1,
+                Common::D2D_RECT_F, ID2D1Factory1, ID2D1HwndRenderTarget, ID2D1SolidColorBrush,
+                ID2D1StrokeStyle1, D2D1_HWND_RENDER_TARGET_PROPERTIES, D2D1_PRESENT_OPTIONS,
+                D2D1_RENDER_TARGET_PROPERTIES,
             },
             DirectWrite::{
                 DWriteCreateFactory, IDWriteFactory, IDWriteTextFormat, DWRITE_FACTORY_TYPE_SHARED,
                 DWRITE_FONT_STRETCH_NORMAL, DWRITE_FONT_STYLE_NORMAL, DWRITE_FONT_WEIGHT_BOLD,
             },
-            Gdi::CreateSolidBrush,
+            Gdi::{BeginPaint, CreateSolidBrush, EndPaint, PAINTSTRUCT},
         },
         System::LibraryLoader::GetModuleHandleW,
         UI::WindowsAndMessaging::{
             CreateWindowExW, DefWindowProcW, GetClientRect, GetWindowLongPtrA, LoadCursorW,
             RegisterClassW, SetWindowLongPtrA, CREATESTRUCTA, CS_HREDRAW, CS_VREDRAW,
-            CW_USEDEFAULT, GWLP_USERDATA, HMENU, IDC_ARROW, WINDOW_EX_STYLE, WM_CREATE, WNDCLASSW,
-            WS_CHILDWINDOW, WS_CLIPSIBLINGS, WS_VISIBLE,
+            CW_USEDEFAULT, GWLP_USERDATA, HMENU, IDC_ARROW, WINDOW_EX_STYLE, WM_CREATE, WM_DESTROY,
+            WM_PAINT, WNDCLASSW, WS_CHILDWINDOW, WS_CLIPSIBLINGS, WS_VISIBLE,
         },
     },
 };
 
 static REGISTER_WINDOW_CLASS: Once = Once::new();
 
-const DEFAULT_WIDTH: u32 = 800;
-const DEFAULT_HEIGHT: u32 = 600;
-
+const DEFAULT_LAYOUT_COLOR: u32 = 0x5acd7d;
+const DEFAULT_BRUSH_COLOR: u32 = 0x000000;
 pub(crate) struct LayoutView<'a> {
     handle: HWND,
     factory: &'a ID2D1Factory1,
@@ -36,6 +37,7 @@ pub(crate) struct LayoutView<'a> {
     text_format: IDWriteTextFormat,
     line_style: ID2D1StrokeStyle1,
     default_brush: Option<ID2D1SolidColorBrush>,
+
     dpix: f32,
     dpiy: f32,
 }
@@ -89,7 +91,9 @@ impl<'a> LayoutView<'a> {
 
         // get the parent size
         let mut rect = Default::default();
-        unsafe { GetClientRect(parent, &mut rect) };
+        unsafe {
+            let _ = GetClientRect(parent, &mut rect);
+        };
 
         let _window = unsafe {
             CreateWindowExW(
@@ -110,25 +114,89 @@ impl<'a> LayoutView<'a> {
         Ok(view)
     }
 
-    pub(crate) fn hwnd(&self) -> HWND {
-        self.handle
-    }
-
     fn release_device(&mut self) {
         self.target = None;
         self.release_device_resources();
-    }
-
-    fn message_handler(&mut self, message: u32, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
-        match message {
-            _ => unsafe { DefWindowProcW(HWND(self.handle.0 as _), message, wparam, lparam) },
-        }
     }
 
     fn release_device_resources(&mut self) {
         self.default_brush = None;
         self.target = None;
     }
+
+    fn message_handler(&mut self, message: u32, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
+        match message {
+            WM_PAINT => {
+                println!("WM_PAINT");
+                let mut ps = PAINTSTRUCT::default();
+                unsafe {
+                    BeginPaint(self.handle, &mut ps);
+                    self.render().expect("unable to render");
+                    if !bool::from(EndPaint(self.handle, &ps)) {
+                        return LRESULT(-1);
+                    }
+                }
+                LRESULT(0)
+            }
+            WM_DESTROY => {
+                self.release_device();
+                LRESULT(0)
+            }
+            _ => unsafe { DefWindowProcW(HWND(self.handle.0 as _), message, wparam, lparam) },
+        }
+    }
+
+    fn render(&mut self) -> Result<()> {
+        if self.target.is_none() {
+            self.create_render_target()?;
+            self.create_resources()?;
+            println!("Created render target");
+        }
+
+        let target = self.target.as_ref().unwrap();
+
+        unsafe {
+            target.BeginDraw();
+            target.Clear(Some(&color_rgb(DEFAULT_LAYOUT_COLOR)));
+            target.DrawRectangle(
+                &D2D_RECT_F {
+                    left: 10.0,
+                    top: 10.0,
+                    right: 50.0,
+                    bottom: 50.0,
+                },
+                self.default_brush.as_ref().unwrap(),
+                1.0,
+                None,
+            );
+            target.EndDraw(None, None)?;
+        }
+        Ok(())
+    }
+
+    fn create_resources(&mut self) -> Result<()> {
+        let target = self.target.as_ref().unwrap();
+        self.default_brush = Some(create_brush_rgb(target, DEFAULT_BRUSH_COLOR)?);
+        Ok(())
+    }
+
+    fn create_render_target(&mut self) -> Result<()> {
+        let mut rect = RECT::default();
+        unsafe { GetClientRect(self.handle, &mut rect)? };
+        let props = D2D1_RENDER_TARGET_PROPERTIES::default();
+        let hwnd_props = D2D1_HWND_RENDER_TARGET_PROPERTIES {
+            hwnd: self.handle,
+            pixelSize: windows::Win32::Graphics::Direct2D::Common::D2D_SIZE_U {
+                width: (rect.right - rect.left) as u32,
+                height: (rect.bottom - rect.top) as u32,
+            },
+            presentOptions: D2D1_PRESENT_OPTIONS::default(),
+        };
+        let target = unsafe { self.factory.CreateHwndRenderTarget(&props, &hwnd_props)? };
+        self.target = Some(target);
+        Ok(())
+    }
+
     unsafe extern "system" fn wnd_proc(
         window: HWND,
         message: u32,
