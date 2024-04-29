@@ -42,6 +42,10 @@ impl Bezier {
         bezier
     }
 
+    pub fn control_points(&self) -> &[Point; 4] {
+        &self.ctrl_point
+    }
+
     pub fn len(&mut self) -> f32 {
         if self.modified {
             self.calc_curve();

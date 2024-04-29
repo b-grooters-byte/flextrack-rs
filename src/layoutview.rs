@@ -1,4 +1,8 @@
-use crate::direct2d::{color_rgb, create_brush_rgb, create_style};
+use crate::{
+    bezier::Bezier,
+    direct2d::{color_rgb, create_brush_rgb, create_style},
+    geometry::Point,
+};
 use std::sync::Once;
 use windows::{
     core::{Result, HSTRING},
@@ -7,8 +11,8 @@ use windows::{
         Graphics::{
             Direct2D::{
                 Common::D2D_RECT_F, ID2D1Factory1, ID2D1HwndRenderTarget, ID2D1SolidColorBrush,
-                ID2D1StrokeStyle1, D2D1_HWND_RENDER_TARGET_PROPERTIES, D2D1_PRESENT_OPTIONS,
-                D2D1_RENDER_TARGET_PROPERTIES,
+                ID2D1StrokeStyle1, D2D1_ELLIPSE, D2D1_HWND_RENDER_TARGET_PROPERTIES,
+                D2D1_PRESENT_OPTIONS, D2D1_RENDER_TARGET_PROPERTIES,
             },
             DirectWrite::{
                 DWriteCreateFactory, IDWriteFactory, IDWriteTextFormat, DWRITE_FACTORY_TYPE_SHARED,
@@ -37,9 +41,12 @@ pub(crate) struct LayoutView<'a> {
     text_format: IDWriteTextFormat,
     line_style: ID2D1StrokeStyle1,
     default_brush: Option<ID2D1SolidColorBrush>,
+    handle_brush: Option<ID2D1SolidColorBrush>,
+    handle_style: Option<ID2D1StrokeStyle1>,
 
     dpix: f32,
     dpiy: f32,
+    bezier: Bezier,
 }
 
 impl<'a> LayoutView<'a> {
@@ -85,8 +92,19 @@ impl<'a> LayoutView<'a> {
             target: None,
             line_style,
             default_brush: None,
+            handle_brush: None,
+            handle_style: None,
             dpix,
             dpiy,
+            bezier: Bezier::new_with_ctrl_point(
+                [
+                    Point { x: 10.0, y: 10.0 },
+                    Point { x: 100.0, y: 10.0 },
+                    Point { x: 10.0, y: 150.0 },
+                    Point { x: 150.0, y: 150.0 },
+                ],
+                0.05,
+            ),
         });
 
         // get the parent size
@@ -121,6 +139,8 @@ impl<'a> LayoutView<'a> {
 
     fn release_device_resources(&mut self) {
         self.default_brush = None;
+        self.handle_brush = None;
+        self.handle_style = None;
         self.target = None;
     }
 
@@ -158,17 +178,32 @@ impl<'a> LayoutView<'a> {
         unsafe {
             target.BeginDraw();
             target.Clear(Some(&color_rgb(DEFAULT_LAYOUT_COLOR)));
-            target.DrawRectangle(
-                &D2D_RECT_F {
-                    left: 10.0,
-                    top: 10.0,
-                    right: 50.0,
-                    bottom: 50.0,
-                },
-                self.default_brush.as_ref().unwrap(),
-                1.0,
-                None,
-            );
+
+            let curve = self.bezier.curve();
+            let mut prev = &curve[0];
+            for p in curve.iter().skip(1) {
+                target.DrawLine(
+                    prev.into(),
+                    p.into(),
+                    self.default_brush.as_ref().unwrap(),
+                    1.0,
+                    None,
+                );
+                prev = p;
+            }
+            // draw the control points
+            for p in self.bezier.control_points().iter() {
+                target.DrawEllipse(
+                    &D2D1_ELLIPSE {
+                        point: p.into(),
+                        radiusX: 10.0,
+                        radiusY: 10.0,
+                    },
+                    self.handle_brush.as_ref().unwrap(),
+                    1.0,
+                    self.handle_style.as_ref().unwrap(),
+                );
+            }
             target.EndDraw(None, None)?;
         }
         Ok(())
@@ -177,6 +212,8 @@ impl<'a> LayoutView<'a> {
     fn create_resources(&mut self) -> Result<()> {
         let target = self.target.as_ref().unwrap();
         self.default_brush = Some(create_brush_rgb(target, DEFAULT_BRUSH_COLOR)?);
+        self.handle_brush = Some(create_brush_rgb(target, 0xAA0000)?);
+        self.handle_style = Some(create_style(self.factory, None)?);
         Ok(())
     }
 

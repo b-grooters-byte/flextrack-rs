@@ -1,3 +1,5 @@
+use windows::Win32::Graphics::Direct2D::Common::D2D_POINT_2F;
+
 #[derive(Debug, Clone)]
 pub struct Rect {
     pub x: f32,
@@ -33,6 +35,30 @@ impl Point {
             return f32::NAN;
         }
         cy / cx
+    }
+}
+
+impl From<D2D_POINT_2F> for Point {
+    fn from(p: D2D_POINT_2F) -> Self {
+        Point { x: p.x, y: p.y }
+    }
+}
+
+impl From<&D2D_POINT_2F> for Point {
+    fn from(p: &D2D_POINT_2F) -> Self {
+        Point { x: p.x, y: p.y }
+    }
+}
+
+impl From<Point> for D2D_POINT_2F {
+    fn from(p: Point) -> Self {
+        D2D_POINT_2F { x: p.x, y: p.y }
+    }
+}
+
+impl From<&Point> for D2D_POINT_2F {
+    fn from(p: &Point) -> Self {
+        D2D_POINT_2F { x: p.x, y: p.y }
     }
 }
 
